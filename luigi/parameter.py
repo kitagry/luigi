@@ -426,21 +426,22 @@ class Parameter(Generic[T]):
         }
 
 
-class OptionalParameterMixin:
+class OptionalParameterMixin(Generic[T]):
     """
     Mixin to make a parameter class optional and treat empty string as None.
+    Combine with Parameter[T] subclasses as OptionalParameterMixin[T].
     """
 
     expected_type = type(None)
 
     @overload
-    def __get__(self: "Parameter[T]", instance: None, owner: Any) -> "Parameter[Optional[T]]": ...
+    def __get__(self, instance: None, owner: Any) -> "Parameter[Optional[T]]": ...
 
     @overload
-    def __get__(self: "Parameter[T]", instance: Any, owner: Any) -> Optional[T]: ...
+    def __get__(self, instance: Any, owner: Any) -> Optional[T]: ...
 
     def __get__(self, instance: Any, owner: Any) -> Any:
-        return super().__get__(instance, owner)
+        return super().__get__(instance, owner)  # type: ignore[misc]
 
     def serialize(self, x):
         """
@@ -485,13 +486,13 @@ class OptionalParameterMixin:
         return None
 
 
-class OptionalParameter(OptionalParameterMixin, Parameter[Optional[str]]):
+class OptionalParameter(OptionalParameterMixin[str], Parameter[Optional[str]]):
     """Class to parse optional parameters."""
 
     expected_type = str
 
 
-class OptionalStrParameter(OptionalParameterMixin, Parameter[Optional[str]]):
+class OptionalStrParameter(OptionalParameterMixin[str], Parameter[Optional[str]]):
     """Class to parse optional str parameters."""
 
     expected_type = str
@@ -798,7 +799,7 @@ class IntParameter(Parameter[int]):
         return value + 1
 
 
-class OptionalIntParameter(OptionalParameterMixin, IntParameter):
+class OptionalIntParameter(OptionalParameterMixin[int], IntParameter):  # type: ignore[misc]
     """Class to parse optional int parameters."""
 
     expected_type = int
@@ -816,7 +817,7 @@ class FloatParameter(Parameter[float]):
         return float(x)
 
 
-class OptionalFloatParameter(OptionalParameterMixin, FloatParameter):
+class OptionalFloatParameter(OptionalParameterMixin[float], FloatParameter):  # type: ignore[misc]
     """Class to parse optional float parameters."""
 
     expected_type = float
@@ -897,7 +898,7 @@ class BoolParameter(Parameter[bool]):
         return parser_kwargs
 
 
-class OptionalBoolParameter(OptionalParameterMixin, BoolParameter):
+class OptionalBoolParameter(OptionalParameterMixin[bool], BoolParameter):  # type: ignore[misc]
     """Class to parse optional bool parameters."""
 
     expected_type = bool
@@ -1299,7 +1300,7 @@ class DictParameter(Parameter[DictT]):
         return json.dumps(x, cls=_DictParamEncoder)
 
 
-class OptionalDictParameter(OptionalParameterMixin, DictParameter):
+class OptionalDictParameter(OptionalParameterMixin[DictT], DictParameter[DictT]):  # type: ignore[misc]
     """Class to parse optional dict parameters."""
 
     expected_type = FrozenOrderedDict
@@ -1454,7 +1455,7 @@ class ListParameter(Parameter[ListT]):
         return json.dumps(x, cls=_DictParamEncoder)
 
 
-class OptionalListParameter(OptionalParameterMixin, ListParameter):
+class OptionalListParameter(OptionalParameterMixin[ListT], ListParameter[ListT]):  # type: ignore[misc]
     """Class to parse optional list parameters."""
 
     expected_type = tuple
@@ -1525,7 +1526,7 @@ class TupleParameter(ListParameter[ListT]):
         return tuple(x)
 
 
-class OptionalTupleParameter(OptionalParameterMixin, TupleParameter):
+class OptionalTupleParameter(OptionalParameterMixin[ListT], TupleParameter[ListT]):  # type: ignore[misc]
     """Class to parse optional tuple parameters."""
 
     expected_type = tuple
@@ -1555,6 +1556,10 @@ class NumericalParameter(Parameter[NumericalType]):
 
         $ luigi --module my_tasks MyTask --my-param-1 -3 --my-param-2 -2
     """
+
+    _var_type: Type[NumericalType]
+    _min_value: NumericalType
+    _max_value: NumericalType
 
     def __init__(
         self,
@@ -1604,7 +1609,7 @@ class NumericalParameter(Parameter[NumericalType]):
             left_endpoint="[" if left_op == operator.le else "(",
             right_endpoint=")" if right_op == operator.lt else "]",
         )
-        super().__init__(default=default, **kwargs)
+        super().__init__(default=default, **kwargs)  # type: ignore[arg-type]
         if self.description:
             self.description += " "
         else:
@@ -1619,7 +1624,7 @@ class NumericalParameter(Parameter[NumericalType]):
             raise ValueError("{s} is not in the set of {permitted_range}".format(s=x, permitted_range=self._permitted_range))
 
 
-class OptionalNumericalParameter(OptionalParameterMixin, NumericalParameter):
+class OptionalNumericalParameter(OptionalParameterMixin[NumericalType], NumericalParameter[NumericalType]):  # type: ignore[misc]
     """Class to parse optional numerical parameters."""
 
     def __init__(
@@ -1627,8 +1632,8 @@ class OptionalNumericalParameter(OptionalParameterMixin, NumericalParameter):
         default: Union[Optional[NumericalType], _NoValueType] = _no_value,
         **kwargs: Unpack[_ParameterKwargs],
     ):
-        super().__init__(default=default, **kwargs)
-        self.expected_type = self._var_type
+        super().__init__(default=default, **kwargs)  # type: ignore[arg-type]
+        self.expected_type = self._var_type  # type: ignore[assignment]
 
 
 ChoiceType = TypeVar("ChoiceType", default=str)
@@ -1664,7 +1669,7 @@ class ChoiceParameter(Parameter[ChoiceType]):
         default: Union[ChoiceType, _NoValueType] = _no_value,
         *,
         choices: Optional[Sequence[ChoiceType]] = None,
-        var_type: Type[ChoiceType] = str,
+        var_type: Type[ChoiceType] = str,  # type: ignore[assignment]
         **kwargs: Unpack[_ParameterKwargs],
     ):
         """
@@ -1726,7 +1731,7 @@ class ChoiceListParameter(ChoiceParameter[ChoiceType]):
 
     _sep = ","
 
-    @overload
+    @overload  # type: ignore[override]
     def __get__(self, instance: None, owner: Any) -> "Parameter[Tuple[ChoiceType, ...]]": ...
 
     @overload
@@ -1738,7 +1743,7 @@ class ChoiceListParameter(ChoiceParameter[ChoiceType]):
     def __init__(
         self,
         default: Union[Tuple[ChoiceType, ...], _NoValueType] = _no_value,
-        var_type: Type[ChoiceType] = str,
+        var_type: Type[ChoiceType] = str,  # type: ignore[assignment]
         choices: Optional[Sequence[ChoiceType]] = None,
         **kwargs: Unpack[_ParameterKwargs],
     ):
@@ -1758,18 +1763,18 @@ class ChoiceListParameter(ChoiceParameter[ChoiceType]):
         return self._sep.join(x)
 
 
-class OptionalChoiceParameter(OptionalParameterMixin, ChoiceParameter[ChoiceType]):
+class OptionalChoiceParameter(OptionalParameterMixin[ChoiceType], ChoiceParameter[ChoiceType]):  # type: ignore[misc]
     """Class to parse optional choice parameters."""
 
     def __init__(
         self,
         default: Union[Optional[ChoiceType], _NoValueType] = _no_value,
-        var_type: Type[ChoiceType] = str,
+        var_type: Type[ChoiceType] = str,  # type: ignore[assignment]
         choices: Optional[Sequence[ChoiceType]] = None,
         **kwargs: Unpack[_ParameterKwargs],
     ):
         super().__init__(default=default, var_type=var_type, choices=choices, **kwargs)  # type: ignore[arg-type]
-        self.expected_type = self._var_type
+        self.expected_type = self._var_type  # type: ignore[assignment]
 
 
 class PathParameter(Parameter[Path]):
@@ -1831,7 +1836,7 @@ class PathParameter(Parameter[Path]):
         return path
 
 
-class OptionalPathParameter(OptionalParameter, PathParameter):
+class OptionalPathParameter(OptionalParameterMixin[Path], PathParameter):  # type: ignore[misc]
     """Class to parse optional path parameters."""
 
     expected_type = (str, Path)  # type: ignore
